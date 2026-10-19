@@ -1,0 +1,46 @@
+# Dependencies and Expo state
+node_modules/
+.expo/
+expo-env.d.ts
+.metro-health-check*
+
+# Generated native projects and build outputs
+/android/
+/ios/
+dist/
+web-build/
+build/
+*.apk
+*.aab
+*.ipa
+*.app
+*.tar.gz
+.kotlin/
+*.orig.*
+*.tsbuildinfo
+
+# Local environments (keep only the safe template)
+.env
+.env.*
+!.env.example
+
+# Signing keys, service accounts and credentials
+credentials.json
+credentials/
+.secrets/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+*service-account*.json
+
+# Local tooling
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
