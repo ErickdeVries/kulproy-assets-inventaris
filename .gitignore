@@ -31,3 +31,4 @@ Thumbs.db
 
 # Local preview/runtime artifacts
 *.local
+/artifacts/apk/

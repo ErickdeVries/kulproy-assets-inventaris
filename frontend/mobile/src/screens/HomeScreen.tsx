@@ -1,63 +1,22 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Client, assetPayload } from '../client';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiBaseUrl } from '../config/api';
 
-type NextStep = 'login' | 'dashboard';
-
+type Screen = 'login' | 'dashboard' | 'assets' | 'create' | 'detail' | 'account';
 export function HomeScreen() {
-  const [nextStep, setNextStep] = useState<NextStep>('login');
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.eyebrow}>ASSET-GUDANG · MOBILE</Text>
-        <Text accessibilityRole="header" style={styles.title}>Aset tertata, kerja lebih mudah.</Text>
-        <Text style={styles.description}>Fondasi aplikasi gudang sudah siap. Kelola aset dari genggaman pada tahap berikutnya.</Text>
-        <View style={styles.card}>
-          <Text style={styles.badge}>FASE 1 · FONDASI EXPO</Text>
-          <Text style={styles.heading}>Selamat datang</Text>
-          <Text style={styles.body}>Ini adalah layar awal React Native, bukan data inventaris langsung. Login dan dashboard belum terhubung.</Text>
-          <Text style={styles.label}>Konfigurasi API</Text>
-          <Text selectable style={styles.body}>{apiBaseUrl ?? 'Belum diatur — mode fondasi tanpa koneksi backend.'}</Text>
-          <Text style={styles.note}>URL terisi bukan berarti server sudah terhubung. Layar ini tidak mengirim permintaan API.</Text>
-        </View>
-        <Text accessibilityRole="header" style={styles.heading}>Langkah berikutnya</Text>
-        <View style={styles.actions}>
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: nextStep === 'login' }} onPress={() => setNextStep('login')} style={[styles.button, nextStep === 'login' && styles.selected]}>
-            <Text style={[styles.buttonText, nextStep === 'login' && styles.selectedText]}>Rencana login</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ selected: nextStep === 'dashboard' }} onPress={() => setNextStep('dashboard')} style={[styles.button, nextStep === 'dashboard' && styles.selected]}>
-            <Text style={[styles.buttonText, nextStep === 'dashboard' && styles.selectedText]}>Rencana dashboard</Text>
-          </Pressable>
-        </View>
-        <View style={styles.card} accessibilityLiveRegion="polite">
-          <Text style={styles.heading}>{nextStep === 'login' ? '01 · Login' : '02 · Dashboard'}</Text>
-          <Text style={styles.body}>{nextStep === 'login'
-            ? 'Berikutnya: formulir masuk, validasi, autentikasi backend, dan penyimpanan sesi yang aman.'
-            : 'Berikutnya: ringkasan aset, daftar inventaris, pencarian, dan status gudang dari API.'}</Text>
-          <Text style={styles.note}>Belum tersedia pada fase ini.</Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+ const client=useMemo(()=>new Client(),[]); const [screen,setScreen]=useState<Screen>('login'); const [url,setUrl]=useState(apiBaseUrl??''); const [username,setUsername]=useState(''); const [password,setPassword]=useState(''); const [assets,setAssets]=useState<any[]>([]); const [categories,setCategories]=useState<any[]>([]); const [query,setQuery]=useState(''); const [selected,setSelected]=useState<any>(null); const [form,setForm]=useState<any>({nama:'',kategori_id:'',jumlah:'1',satuan:'unit',kondisi:'baik',tipe:'dalam_gudang',zona:'',rak:'',catatan:'',keterangan:''}); const [report,setReport]=useState<any>(null); const [busy,setBusy]=useState(false); const [error,setError]=useState('');
+ const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');try{await fn()}catch(e){setError(e instanceof Error?e.message:'Permintaan gagal.')}finally{setBusy(false)}};
+ const login=()=>run(async()=>{await client.connect(url);await client.login(username,password);setPassword('');setReport(await client.report());setScreen('dashboard')});
+ if(screen==='login') return <SafeAreaView style={styles.safeArea}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><ScrollView contentContainerStyle={styles.content}><Text style={styles.eyebrow}>ASSET-GUDANG · MOBILE</Text><Text style={styles.title}>Masuk ke inventaris</Text><Text style={styles.body}>Masukkan alamat backend FastAPI. Password tidak disimpan.</Text><Field label="URL API (/api/v1)" value={url} onChangeText={setUrl}/><Field label="Username" value={username} onChangeText={setUsername}/><Field label="Password" value={password} onChangeText={setPassword} secureTextEntry/><Button title={busy?'Menghubungkan…':'Masuk'} onPress={login} disabled={busy}/><Text style={styles.note}>Gunakan HTTPS di luar jaringan lokal. URL harus diakhiri /api/v1.</Text><Text style={styles.error}>{error}</Text></ScrollView></KeyboardAvoidingView></SafeAreaView>;
+ if(screen==='dashboard') return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.content}><Text style={styles.eyebrow}>ASSET-GUDANG</Text><Text style={styles.title}>Ringkasan</Text><Card label="Total asset" value={report?.total_asset??'—'}/><Card label="Total unit" value={report?.total_unit??'—'}/><Button title="Daftar & cari asset" onPress={()=>run(async()=>{const r=await client.assets('');setAssets(r.items??[]);setScreen('assets')})}/><Button title="Akun & password" onPress={()=>setScreen('account')}/><Button title="Keluar" onPress={()=>run(async()=>{await client.logout();setScreen('login')})}/></ScrollView></SafeAreaView>;
+ if(screen==='assets') return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.content}><Text style={styles.title}>Asset</Text><View style={styles.row}><TextInput style={[styles.input,styles.flex]} placeholder="Cari nama/kode" value={query} onChangeText={setQuery}/><Button title="Cari" onPress={()=>run(async()=>{const r=await client.assets(query);setAssets(r.items??[])})}/></View><Button title="Tambah asset" onPress={()=>run(async()=>{setCategories(await client.categories());setScreen('create')})}/>{assets.map(a=><Pressable key={a.id} style={styles.card} onPress={()=>run(async()=>{setSelected(await client.asset(a.id));setScreen('detail')})}><Text style={styles.heading}>{a.nama}</Text><Text style={styles.note}>{a.kode} · {a.jumlah} {a.satuan} · {a.kondisi}</Text></Pressable>)}<Button title="Kembali" onPress={()=>setScreen('dashboard')}/></ScrollView></SafeAreaView>;
+ if(screen==='detail') return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.content}><Text style={styles.title}>{selected?.nama}</Text><Text style={styles.body}>Kode: {selected?.kode}</Text><Text style={styles.body}>Jumlah: {selected?.jumlah} {selected?.satuan}</Text><Text style={styles.body}>Lokasi: {selected?.lokasi?.tipe} {selected?.lokasi?.zona} {selected?.lokasi?.rak}</Text><Button title="Kembali" onPress={()=>setScreen('assets')}/></ScrollView></SafeAreaView>;
+ if(screen==='create') return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.content}><Text style={styles.title}>Tambah asset</Text><Field label="Nama" value={form.nama} onChangeText={(v:string)=>setForm({...form,nama:v})}/><Text style={styles.label}>Kategori</Text><View style={styles.chips}>{categories.map(c=><Pressable key={c.id} style={styles.chip} onPress={()=>setForm({...form,kategori_id:c.id})}><Text>{c.nama}</Text></Pressable>)}</View><Field label="Jumlah" value={form.jumlah} onChangeText={(v:string)=>setForm({...form,jumlah:v})}/><Field label="Satuan" value={form.satuan} onChangeText={(v:string)=>setForm({...form,satuan:v})}/><Field label="Zona" value={form.zona} onChangeText={(v:string)=>setForm({...form,zona:v})}/><Field label="Rak" value={form.rak} onChangeText={(v:string)=>setForm({...form,rak:v})}/><Button title="Simpan" onPress={()=>run(async()=>{await client.createAsset(assetPayload(form,categories));const r=await client.assets('');setAssets(r.items??[]);setScreen('assets')})}/><Button title="Batal" onPress={()=>setScreen('assets')}/></ScrollView></SafeAreaView>;
+ if(screen==='account') return <SafeAreaView style={styles.safeArea}><ScrollView contentContainerStyle={styles.content}><Text style={styles.title}>Akun</Text><Text style={styles.body}>{client.user?.nama} · {client.user?.username} · {client.user?.role}</Text><Field label="Password saat ini" value={form.current_password??''} onChangeText={(v:string)=>setForm({...form,current_password:v})} secureTextEntry/><Field label="Password baru" value={form.new_password??''} onChangeText={(v:string)=>setForm({...form,new_password:v})} secureTextEntry/><Button title="Ubah password" onPress={()=>run(async()=>{await client.changePassword(form.current_password,form.new_password);setForm({...form,current_password:'',new_password:''})})}/><Button title="Kembali" onPress={()=>setScreen('dashboard')}/></ScrollView></SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f3f6fb' },
-  content: { padding: 24, gap: 20, maxWidth: 640, width: '100%', alignSelf: 'center' },
-  eyebrow: { color: '#215c49', fontSize: 12, fontWeight: '700', letterSpacing: 1.5 },
-  title: { color: '#152a25', fontSize: 32, lineHeight: 40, fontWeight: '800' },
-  description: { color: '#53645e', fontSize: 16, lineHeight: 25 },
-  card: { padding: 22, backgroundColor: '#fff', borderRadius: 20, gap: 12, borderWidth: 1, borderColor: '#dce5e0' },
-  badge: { color: '#215c49', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  heading: { color: '#152a25', fontSize: 20, fontWeight: '700' },
-  body: { color: '#40554b', fontSize: 15, lineHeight: 24 },
-  label: { color: '#152a25', fontSize: 14, fontWeight: '700', marginTop: 6 },
-  note: { color: '#66766e', fontSize: 13, lineHeight: 20 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  button: { minHeight: 48, paddingVertical: 14, paddingHorizontal: 18, borderRadius: 12, backgroundColor: '#e2ebe6' },
-  selected: { backgroundColor: '#215c49' },
-  buttonText: { color: '#215c49', fontWeight: '700', fontSize: 14 },
-  selectedText: { color: '#fff' },
-});
+function Field({label,value,onChangeText,secureTextEntry=false}:any){return <View><Text style={styles.label}>{label}</Text><TextInput style={styles.input} value={value} onChangeText={onChangeText} secureTextEntry={secureTextEntry} autoCapitalize="none"/></View>}
+function Button({title,onPress,disabled=false}:any){return <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.button,disabled&&{opacity:.5}]}><Text style={styles.buttonText}>{title}</Text></Pressable>}
+function Card({label,value}:{label:string,value:any}){return <View style={styles.card}><Text style={styles.note}>{label}</Text><Text style={styles.metric}>{String(value)}</Text></View>}
+const styles=StyleSheet.create({safeArea:{flex:1,backgroundColor:'#f3f6fb'},flex:{flex:1},row:{flexDirection:'row',gap:8},heading:{fontSize:19,fontWeight:'700',color:'#132b24'},chip:{backgroundColor:'#e1ebe6',padding:10,borderRadius:18},chips:{flexDirection:'row',flexWrap:'wrap',gap:8},content:{padding:24,gap:16,maxWidth:640,width:'100%',alignSelf:'center'},eyebrow:{color:'#17624d',fontSize:12,fontWeight:'800',letterSpacing:1.3},title:{color:'#132b24',fontSize:30,fontWeight:'800'},body:{color:'#53645e',lineHeight:22},label:{color:'#233c33',fontWeight:'700',marginBottom:5},input:{backgroundColor:'#fff',borderColor:'#d1ded8',borderWidth:1,borderRadius:10,minHeight:48,paddingHorizontal:13,fontSize:16},button:{backgroundColor:'#17624d',borderRadius:10,minHeight:48,alignItems:'center',justifyContent:'center'},buttonText:{color:'#fff',fontWeight:'800'},note:{color:'#66766e',fontSize:13,lineHeight:20},error:{color:'#a22626',backgroundColor:'#fdecec',padding:10,borderRadius:8},card:{backgroundColor:'#fff',borderRadius:14,padding:18,borderWidth:1,borderColor:'#dce5e0'},metric:{color:'#17624d',fontSize:30,fontWeight:'800',marginTop:5}});

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Asset-Gudang",
-    "slug": "asset-gudang-mobile",
+    "slug": "kulproy-assets-inventaris",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,6 +16,12 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0cb1ef79-062d-4d40-a0b6-c59954ebc3de"
+      }
+    },
+    "owner": "erickdevries"
   }
 }

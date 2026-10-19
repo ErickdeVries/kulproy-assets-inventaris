@@ -2,12 +2,13 @@
 
 Aplikasi Expo / React Native TypeScript **terpisah** dari `../pwa`. Tidak mengganti PWA atau backend. Dibuat dari template resmi `expo-template-blank-typescript@58.0.23` dengan `create-expo-app@5.0.0`, menggunakan Expo SDK 58 stabil, React 19.3, React Native 0.88, dan npm lockfile tersendiri.
 
-## Cakupan
+## Cakupan fungsional minimum
 
-- Beranda Bahasa Indonesia, safe area, scroll, dan tombol interaktif untuk melihat rencana login/dashboard.
-- Login/dashboard masih placeholder rencana, **bukan** fitur autentikasi/inventaris yang berfungsi.
-- Tidak ada request backend, sesi, data palsu inventaris, credential, OTA update, atau EAS project ID.
-- Ikon masih aset bawaan template; ganti dengan branding sebelum distribusi resmi.
+- Layar koneksi/login Bahasa Indonesia: URL HTTP(S) harus berakhiran `/api/v1`; URL dapat diedit, tidak ada host atau credential hardcoded.
+- Login backend nyata, restore/logout sesi, reset sesi saat 401, dan token disimpan hanya melalui Expo SecureStore (password tidak pernah disimpan).
+- Dashboard memanggil `/laporan/rekap`; API client juga mencakup kategori, daftar/search/detail/create asset, identity, dan change-password dengan model backend mentah.
+- Error/retry guidance, safe area, keyboard avoidance, loading state, dan no-server guidance.
+- Belum ada approval/admin flow, mutasi/evidence, upload foto, filter lanjutan, pagination UI, atau parity penuh PWA. UI mobile belum diuji pada perangkat fisik; export bukan APK.
 
 ## Jalankan lokal
 
@@ -43,7 +44,9 @@ Contoh untuk backend dengan prefix `/api/v1`:
 
 `localhost` pada ponsel menunjuk ponsel itu sendiri. HTTP lokal mungkin dibatasi kebijakan native; HTTPS adalah pilihan aman untuk APK. Fase ini tidak menambahkan pengecualian cleartext ke Android.
 
-**Semua `EXPO_PUBLIC_*` dan `extra` dapat dibaca pengguna aplikasi. Jangan simpan token, password, signing key, atau rahasia API.** Konfigurasi URL tidak membuktikan konektivitas backend. Tidak ada fetch pada fase ini.
+**Semua `EXPO_PUBLIC_*` dan `extra` dapat dibaca pengguna aplikasi. Jangan simpan token, password, signing key, atau rahasia API.** Token sesi disimpan melalui SecureStore; konfigurasi URL tidak membuktikan konektivitas backend. Jika server tidak hidup atau tidak dapat dijangkau, aplikasi menampilkan instruksi pemeriksaan URL/koneksi dan tombol dapat dicoba kembali.
+
+Client menggunakan kontrak langsung `backend/app/main.py`: `/auth/login`, `/auth/me`, `/auth/change-password`, `/laporan/rekap`, `/categories`, dan `/assets` (list/search/detail/create).
 
 ## EAS: preview APK Android
 
@@ -88,7 +91,8 @@ Fase selanjutnya: tambahkan layar Login dan navigasi; implementasikan API client
 
 ## Hasil validasi awal
 
-- `npm install`: berhasil. `npm run validate`: 3/3 test lulus, TypeScript lulus, dependensi SDK cocok.
+- TDD RED: test client HTTP awal gagal karena `src/client.ts` belum ada (`MODULE_NOT_FOUND`). GREEN: setelah implementasi client + SecureStore, `npm test` lulus 7/7 termasuk server HTTP aktual, auth/session restore, 401 reset, payload asset, dan URL safety. `npm run typecheck` lulus.
+- `npm install`: berhasil. `npm run validate` dan `npm run export:android` perlu dijalankan ulang setelah perubahan; belum ada jaminan uji perangkat fisik.
 - `npx expo-doctor`: **20/20** pemeriksaan lulus.
 - `npm run export:android`: berhasil, **626 modul**, bundle Hermes sekitar **1.6 MB**.
 - `CI=1 npx expo start --localhost --port 8083`: Metro berjalan; `/status` dan manifest Android di `http://localhost:8083` memberi HTTP 200. Manifest menyebut Asset-Gudang/SDK 58 dan launch asset. Pada host ini localhost bind IPv6 (`::1`); `127.0.0.1` ditolak. Server validasi dihentikan setelah pemeriksaan.
